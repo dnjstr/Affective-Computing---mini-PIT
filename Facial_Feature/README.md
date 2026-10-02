@@ -1,12 +1,7 @@
-# Facial Feature Extraction
+# Facial feature pipeline
 
-Put this folder next to `Audio_Feature`, then inside it add:
-- `Videos/`  (the 25 .mp4 files)
-- `G4_-_RESEARCH_MINI-PROJECT.csv`
+Install the root `requirements.txt`, then run `python Facial_Feature/face_feature_pipeline.py`. Videos, metadata and `face_landmarker.task` are resolved relative to this script.
 
-```bash
-python -m pip install -r requirements.txt
-python Extract_Facial_Feature.py   # -> facial_feature_dataset.csv, facial_frame_features.csv
-```
+The raw export retains all metadata rows; failed/low-quality samples are tracked in diagnostics. `face_features_unimputed.csv` includes only QC-passing recordings and excludes duplicated composites and the neutral coefficient. EDA imputation/scaling is explicitly named `face_features_eda_*.csv`.
 
-`mediapipe` is pinned to 0.10.14 because newer versions removed the `mp.solutions.face_mesh` API used here.
+Blendshape and action-unit-style composites are expression proxies. Read [methodology](../docs/METHODOLOGY.md) before interpreting them as emotion features.

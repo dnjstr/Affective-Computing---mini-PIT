@@ -1,8 +1,1 @@
-mediapipe 
-opencv-python 
-pandas 
-numpy 
-scipy 
-scikit-learn 
-matplotlib 
-seaborn
+-r ../requirements.txt

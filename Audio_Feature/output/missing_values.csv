@@ -1,0 +1,10 @@
+,n_missing
+audio_f0_mean_hz,6
+audio_f0_std_hz,6
+audio_f0_min_hz,6
+audio_f0_max_hz,6
+audio_f0_median_hz,6
+audio_f0_range_hz,6
+audio_period_variation_proxy,6
+audio_f0_slope_hz_per_s,6
+audio_f0_std_semitones,6

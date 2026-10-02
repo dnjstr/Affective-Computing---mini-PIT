@@ -1,8 +1,8 @@
-numpy
-pandas
-opencv-python
-mediapipe==0.10.14
-scipy
-scikit-learn
-matplotlib
+mediapipe 
+opencv-python 
+pandas 
+numpy 
+scipy 
+scikit-learn 
+matplotlib 
 seaborn

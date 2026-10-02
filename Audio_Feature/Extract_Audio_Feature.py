@@ -16,7 +16,7 @@ import librosa
 AUDIO_DIR = "Audios"
 
 # CSV file containing your participant information
-LABELS_CSV = "G4_-_RESEARCH_MINI-PROJECT_v2_-_G4_-_2nd_Year.csv"
+LABELS_CSV = "G4_-_RESEARCH_MINI-PROJECT.csv"
 
 # Output CSV
 OUT_CSV = "audio_feature_dataset.csv"
@@ -84,8 +84,6 @@ def to_wav(src, sr=SR):
 
 def extract(path):
 
-    # Example:
-    # Y2c-001.m4a -> Y2c-001
     code = os.path.splitext(os.path.basename(path))[0]
 
     print(f"Processing: {os.path.basename(path)}")
@@ -486,7 +484,7 @@ if __name__ == "__main__":
         glob.glob(
             os.path.join(
                 AUDIO_DIR,
-                "*.m4a"
+                "*.wav"
             )
         )
     )
@@ -496,7 +494,7 @@ if __name__ == "__main__":
     if len(files) == 0:
 
         raise FileNotFoundError(
-            f'No .m4a files were found inside "{AUDIO_DIR}".\n'
+            f'No .wav files were found inside "{AUDIO_DIR}".\n'
             f"Check that your audio files are inside the Audios folder."
         )
 

@@ -131,9 +131,9 @@ Brow motion             0.43  0.06
 ============================================================
 10. FACE vs AUDIO (same participants)
 ============================================================
-Mouth motion           vs audio_rms_mean     rho=  0.14 p=0.502
-Mouth motion           vs audio_f0_mean      rho= -0.38 p=0.117
-Mouth openness (MAR)   vs audio_rms_mean     rho=  0.23 p=0.277
-Mouth openness (MAR)   vs audio_f0_mean      rho=  0.28 p=0.268
-Facial motion          vs audio_rms_mean     rho=  0.10 p=0.619
-Facial motion          vs audio_f0_mean      rho= -0.30 p=0.234
+Mouth motion           vs audio_rms_mean     rho=   nan p=nan
+Mouth motion           vs audio_f0_mean      rho=   nan p=nan
+Mouth openness (MAR)   vs audio_rms_mean     rho=   nan p=nan
+Mouth openness (MAR)   vs audio_f0_mean      rho=   nan p=nan
+Facial motion          vs audio_rms_mean     rho=   nan p=nan
+Facial motion          vs audio_f0_mean      rho=   nan p=nan

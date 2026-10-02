@@ -1,5 +1,4 @@
 import os
-
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -15,13 +14,35 @@ from sklearn.preprocessing import StandardScaler
 # ============================================================
 FACE_CSV = "facial_feature_dataset.csv"
 FRAME_CSV = "facial_frame_features.csv"
-AUDIO_CSV = os.path.join("..", "Audio_Feature", "audio_feature_dataset.csv")  # optional
+RESULT_SUBDIR = "facial_feature_dataset_result"   # fallback location of the CSVs
+AUDIO_CSV = os.path.join("..", "Audio_Feature", "audio_feature_dataset_result",
+                         "audio_feature_dataset.csv") 
 FIG_DIR = "EDA_figures"
+OUT_DIR = "EDA_results"                           
 os.makedirs(FIG_DIR, exist_ok=True)
+os.makedirs(OUT_DIR, exist_ok=True)
 sns.set_theme(style="whitegrid", context="notebook")
 
-face = pd.read_csv(FACE_CSV)
-frames = pd.read_csv(FRAME_CSV)
+
+def load_valid(name, need_rows=True):
+    """Return the first copy of `name` that really contains feature values."""
+    for p in (name, os.path.join(RESULT_SUBDIR, name)):
+        if not os.path.exists(p):
+            continue
+        d = pd.read_csv(p)
+        has_values = d.filter(like="face_").notna().any().any()
+        if has_values:
+            print(f"[load] using {p}")
+            return d
+        print(f"[load] SKIPPING {p}: no feature values in it (empty/NaN)")
+    raise SystemExit(
+        f"\nNo usable '{name}' found. Re-run Extract_Facial_Feature.py and read the "
+        "'WARNING: ... no matching video' lines, or copy the file from "
+        f"{RESULT_SUBDIR}/ into this folder.")
+
+
+face = load_valid(FACE_CSV).copy()
+frames = load_valid(FRAME_CSV)
 
 KEY = {
     "face_ear_mean_mean": "Eye openness (EAR)",
@@ -83,7 +104,7 @@ log("\n" + "=" * 60); log("3. DESCRIPTIVE STATISTICS (key features)"); log("=" *
 desc = face[list(KEY)].describe().T[["mean", "std", "min", "50%", "max"]]
 desc.index = [KEY[i] for i in desc.index]
 log(desc.round(3).to_string())
-desc.round(4).to_csv("eda_descriptive_stats.csv")
+desc.round(4).to_csv(os.path.join(OUT_DIR, "eda_descriptive_stats.csv"))
 
 n = len(KEY); cols = 5; rows = int(np.ceil(n / cols))
 fig, axes = plt.subplots(rows, cols, figsize=(3.2 * cols, 2.7 * rows))
@@ -116,7 +137,7 @@ for k, name in KEY.items():
     rows_.append(r)
 corr = pd.DataFrame(rows_).set_index("feature")
 log(corr.round(3).to_string())
-corr.round(4).to_csv("eda_feature_affect_correlation.csv")
+corr.round(4).to_csv(os.path.join(OUT_DIR, "eda_feature_affect_correlation.csv"))
 log("\nNOTE: n=25 and 15 features tested -> p-values are NOT corrected for multiple "
     "comparisons. Treat as exploratory.")
 
@@ -211,8 +232,8 @@ if os.path.exists(AUDIO_CSV):
         for acol in ["audio_rms_mean", "audio_f0_mean"]:
             rho, p = stats.spearmanr(m[fcol], m[acol], nan_policy="omit")
             log(f"{KEY.get(fcol, fcol):22s} vs {acol:18s} rho={rho:6.2f} p={p:.3f}")
-    m.to_csv("multimodal_face_audio_dataset.csv", index=False)
+    m.to_csv(os.path.join(OUT_DIR, "multimodal_face_audio_dataset.csv"), index=False)
 
-with open("eda_report.txt", "w", encoding="utf-8") as f:
+with open(os.path.join(OUT_DIR, "eda_report.txt"), "w", encoding="utf-8") as f:
     f.write("\n".join(report))
-print(f"\nFigures saved in ./{FIG_DIR}/ , report in eda_report.txt")
+print(f"\nFigures saved in ./{FIG_DIR}/ , report in ./{OUT_DIR}/")

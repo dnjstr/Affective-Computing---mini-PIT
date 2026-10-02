@@ -1,6 +1,6 @@
 import glob
 import os
-
+import re
 import cv2
 import numpy as np
 import pandas as pd
@@ -12,7 +12,11 @@ import mediapipe as mp
 # ============================================================
 
 VIDEO_DIR = "Videos"
-LABELS_CSV = "G4_-_RESEARCH_MINI-PROJECT_v2_-_G4_-_2nd_Year.csv"
+# first file that exists is used
+LABELS_CANDIDATES = [
+    "G4_-_RESEARCH_MINI-PROJECT.csv",
+    "G4_-_RESEARCH_MINI-PROJECT_v2_-_G4_-_2nd_Year.csv",
+]
 
 OUT_CSV = "facial_feature_dataset.csv"        # 1 row per participant
 FRAME_CSV = "facial_frame_features.csv"       # 1 row per video frame
@@ -30,11 +34,31 @@ if not os.path.exists(VIDEO_DIR):
         f"Make sure it is inside the same folder as this Python file."
     )
 
-if not os.path.exists(LABELS_CSV):
+LABELS_CSV = next((p for p in LABELS_CANDIDATES if os.path.exists(p)), None)
+if LABELS_CSV is None:
     raise FileNotFoundError(
-        f'CSV file "{LABELS_CSV}" was not found. '
-        f"Make sure it is inside the same folder as this Python file."
+        f"No label CSV found. Looked for: {LABELS_CANDIDATES}. "
+        f"Make sure one is inside the same folder as this Python file."
     )
+print(f"Using label file: {LABELS_CSV}")
+
+
+# ============================================================
+# PARTICIPANT CODE CLEANING
+# ============================================================
+
+def clean_code(x):
+    """
+    Make codes comparable between the label sheet and the file names.
+    '**Y2C-001**', ' y2c-001 ', 'Y2c-001_PM_Nalipay.mp4'  ->  'Y2c-001'
+    (format: Y + year digit + lowercase letter + '-' + 3 digits,
+     the same style used by the audio dataset)
+    """
+    s = str(x).replace("**", "").strip()
+    m = re.search(r"Y(\d)([A-Za-z])-(\d{3})", s, flags=re.IGNORECASE)
+    if not m:
+        return s
+    return f"Y{m.group(1)}{m.group(2).lower()}-{m.group(3)}"
 
 
 # ============================================================
@@ -178,8 +202,8 @@ def normalised_shape(lm, w, h):
 # ============================================================
 
 def extract(path, face_mesh):
-    code = os.path.splitext(os.path.basename(path))[0]
-    print(f"Processing: {os.path.basename(path)}")
+    code = clean_code(os.path.splitext(os.path.basename(path))[0])
+    print(f"Processing: {os.path.basename(path)}  ->  {code}")
 
     cap = cv2.VideoCapture(path)
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
@@ -298,7 +322,7 @@ def build_template(labels_csv):
     raw.columns = raw.columns.astype(str).str.replace("**", "", regex=False).str.strip()
 
     o = pd.DataFrame()
-    o["participant_code"] = raw["Participant Code"].astype(str).str.strip()
+    o["participant_code"] = raw["Participant Code"].map(clean_code)
     o["year_level"] = raw["Year Level"]
     o["class_activity"] = raw["Class Activity"]
     o["subject"] = raw["Subject"]
@@ -329,11 +353,14 @@ if __name__ == "__main__":
     print(" FACIAL FEATURE EXTRACTION")
     print("==========================================")
 
-    files = sorted(glob.glob(os.path.join(VIDEO_DIR, "*.mp4")))
+    files = sorted(
+        f for f in glob.glob(os.path.join(VIDEO_DIR, "*"))
+        if f.lower().endswith((".mp4", ".mov"))
+    )
     print(f"\nFound {len(files)} video files.")
 
     if not files:
-        raise FileNotFoundError(f'No .mp4 files found inside "{VIDEO_DIR}".')
+        raise FileNotFoundError(f'No .mp4 or .mov files found inside "{VIDEO_DIR}".')
 
     feature_rows, frame_dfs = [], []
 
@@ -359,14 +386,22 @@ if __name__ == "__main__":
     feats = pd.DataFrame(feature_rows)
     print(f"\nSuccessfully extracted features from {len(feats)} videos.")
 
-    # frame-level file (useful for time-series plots)
-    pd.concat(frame_dfs, ignore_index=True).round(5).to_csv(FRAME_CSV, index=False)
-    print(f"Saved {FRAME_CSV}")
-
     template = build_template(LABELS_CSV)
     out = template.merge(feats, on="participant_code", how="left", validate="1:1")
 
     missing = out["video_filename"].isna().sum()
+
+    # never overwrite the output with an empty file
+    if missing == len(out):
+        print("\nNo participant matched any video.")
+        print("Label codes (first 5):", template.participant_code.head().tolist())
+        print("Video codes (first 5):", feats.participant_code.head().tolist())
+        raise SystemExit("Nothing saved. Fix the code mismatch above and re-run.")
+
+    # frame-level file (useful for time-series plots)
+    pd.concat(frame_dfs, ignore_index=True).round(5).to_csv(FRAME_CSV, index=False)
+    print(f"Saved {FRAME_CSV}")
+
     if missing:
         print(f"\nWARNING: {missing} participants have no matching video.")
         for c in out.loc[out["video_filename"].isna(), "participant_code"]:

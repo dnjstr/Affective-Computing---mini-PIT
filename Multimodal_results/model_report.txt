@@ -1,0 +1,16 @@
+Feature set: face+audio  (159 features, n=25, LOOCV)
+
+
+--- Target: valence | class counts: {'neutral': 14, 'positive': 10, 'negative': 1}
+Majority baseline    acc=0.560  macroF1=0.239
+Logistic Regression  acc=0.560  macroF1=0.347
+Random Forest        acc=0.560  macroF1=0.324
+SVM (RBF)            acc=0.560  macroF1=0.239
+kNN (k=3)            acc=0.640  macroF1=0.460
+
+--- Target: arousal | class counts: {'high': 18, 'moderate': 5, 'low': 2}
+Majority baseline    acc=0.720  macroF1=0.279
+Logistic Regression  acc=0.720  macroF1=0.372
+Random Forest        acc=0.720  macroF1=0.279
+SVM (RBF)            acc=0.720  macroF1=0.279
+kNN (k=3)            acc=0.720  macroF1=0.367

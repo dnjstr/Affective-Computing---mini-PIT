@@ -1,5 +1,8 @@
-Python 3
-numpy
-pandas
-librosa
-FFmpeg
+librosa 
+soundfile 
+pandas 
+numpy 
+scipy 
+scikit-learn 
+matplotlib 
+seaborn

@@ -17,6 +17,7 @@ Base repository: `dnjstr/Affective-Computing---mini-PIT`, commit `795da9ab7d913d
 - Add descriptive summaries, missingness, FDR-adjusted statistics, six combined EDA plots and one exploratory out-of-fold model comparison.
 - Avoid silently dropping singleton groups in Kruskal comparisons.
 - Document feature definitions, safe evaluation and limitations.
+- Add `scripts/measurement_checks.py`: automated pitch-track bound inspection, WAV/MP4 interval cross-checks and a head-pose sign round-trip check.
 
 ## Executed checks
 
@@ -24,14 +25,19 @@ Audio extraction was rerun on all 25 original WAVs using the revised code and pi
 
 Initial facial reruns were stopped by automatic approval review because the installed MediaPipe package attempted contact with `play.googleapis.com/log`. Before the successful retry, the installed binary and official MediaPipe privacy notice were examined. The notice states that video/image inputs are processed on-device and are not sent to Google servers, while performance and utilization metrics are sent to Google. This documented behavior, together with user approval, allowed the retry. This is not an independent packet-level verification of the request payload. The root README includes the metrics notice: https://github.com/google-ai-edge/mediapipe#privacy-notice.
 
-Seven targeted tests passed: ID-based pairing despite shuffled rows, rejection of conflicting metadata/duplicate IDs, predictor exclusion of targets/QC/aliases, preservation of raw missing values, BH correction, corrected pitch slope and adjacent-voicing calculation, and failed-facial-QC exclusion. Python compilation passed. The multimodal pipeline and exploratory evaluation completed on 25 paired samples.
+Ten targeted tests passed: ID-based pairing despite shuffled rows, rejection of conflicting metadata/duplicate IDs, predictor exclusion of targets/QC/aliases, preservation of raw missing values, BH correction, corrected pitch slope and adjacent-voicing calculation, failed-facial-QC exclusion, near-bound pitch statistics, synthetic MP4 track-duration parsing and head-pose sign/scale invariance. Python compilation passed. The multimodal pipeline and exploratory evaluation completed on 25 paired samples.
 
 The evaluation uses 1–5 numeric targets rather than claiming reliable three-class performance with a singleton Negative-valence class. Training transformations and supervised feature selection are fitted within folds. Report results as exploratory only: the same small dataset informs all comparisons, features are high-dimensional, and there is no independent test set.
 
 ## Remaining measurement checks
 
-- Listen to and inspect pitch tracks, especially `Y4D-020` near the configured upper bound.
-- Visually inspect landmark/expression tracking on source videos.
-- Verify that WAV/MP4 intervals correspond before making synchronization claims.
-- Validate head-pose sign conventions against known poses.
+The following checks from the original list are now covered by `scripts/measurement_checks.py` (see `docs/MEASUREMENT_CHECKS.md` for the generated report):
+
+- Pitch-track bound inspection: automated near-bound statistics plus overview/detail figures; `Y4D-020` sits at the 500 Hz ceiling (60% of voiced frames within 5 Hz) and `Y4D-009` near the 65 Hz floor.
+- WAV/MP4 interval verification: MP4 internal audio/video tracks align (+0.024–0.042 s, 0/25 flags), but WAV-vs-MP4-audio offsets reach ±0.7 s (20/25 exceed 0.1 s), matching `duration_review_flag` counts.
+- Head-pose sign conventions: synthetic round-trip and scale-invariance tests agree to 1e-14 degrees; observed ranges match expected motion magnitude.
+
+Still open:
+
+- Visual landmark/expression inspection on source videos: deferred; it requires a mediapipe install that would downgrade numpy, which is not acceptable for this contribution.
 - Account for the documented MediaPipe API metrics behavior when running on recordings.

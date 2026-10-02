@@ -13,6 +13,7 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 python scripts/run_all.py
 python scripts/evaluate_baselines.py
+python scripts/measurement_checks.py
 python -m unittest discover -s tests -v
 ```
 
@@ -39,6 +40,7 @@ The combined dataset is **participant-level early fusion**, not synchronized fra
 - [Methodology and feature definitions](docs/METHODOLOGY.md)
 - [Data dictionary and safe predictor selection](docs/DATA_DICTIONARY.md)
 - [Validation and changes](docs/VALIDATION.md)
+- [Measurement checks report](docs/MEASUREMENT_CHECKS.md)
 - [Generated multimodal results](Multimodal_Feature/output_multimodal/RESULTS.md)
 
 This collection has only 25 recordings, substantial target imbalance, and more features than samples. All statistical relationships and model comparisons should be reported as exploratory. The optional comparison predicts numeric 1–5 scores using the same five folds for each modality and a dummy baseline; it does not provide an independent test-set result.

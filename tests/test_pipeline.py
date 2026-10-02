@@ -14,6 +14,8 @@ spec=importlib.util.spec_from_file_location('audio',ROOT/'Audio_Feature/audio_fe
 audio=importlib.util.module_from_spec(spec);spec.loader.exec_module(audio)
 spec=importlib.util.spec_from_file_location('face',ROOT/'Facial_Feature/face_feature_pipeline.py')
 face=importlib.util.module_from_spec(spec);spec.loader.exec_module(face)
+spec=importlib.util.spec_from_file_location('checks',ROOT/'scripts/measurement_checks.py')
+checks=importlib.util.module_from_spec(spec);spec.loader.exec_module(checks)
 
 class PipelineTests(unittest.TestCase):
     def test_join_by_id_not_order(self):
@@ -60,5 +62,34 @@ class PipelineTests(unittest.TestCase):
             face.make_model_ready(df,['face_smile_mean'])
             out=pd.read_csv(Path(tmp)/'face_features_unimputed.csv')
             self.assertEqual(out.participant_code.tolist(),['B','C'])
+    def test_near_bound_stats_flags(self):
+        f0=np.array([100.,200.,300.,np.nan,498.,66.])
+        s=checks.near_bound_stats(f0,65.,500.)
+        self.assertTrue(s['near_bound_flag'])
+        self.assertEqual(s['voiced_frames'],5)
+        self.assertEqual(s['frames_near_upper_bound'],1)
+        self.assertEqual(s['frames_near_lower_bound'],1)
+        self.assertFalse(checks.near_bound_stats(np.array([100.,300.]),65.,500.)['near_bound_flag'])
+        self.assertFalse(checks.near_bound_stats(np.array([np.nan]),65.,500.)['near_bound_flag'])
+    def test_mp4_track_durations(self):
+        import struct
+        def box(typ,payload):return struct.pack('>I',8+len(payload))+typ+payload
+        def mvhd(ts,dur):return box(b'mvhd',b'\x00'*12+struct.pack('>II',ts,dur))
+        def mdhd(ts,dur):return box(b'mdhd',b'\x00'*12+struct.pack('>II',ts,dur))
+        def hdlr(h):return box(b'hdlr',b'\x00'*8+h)
+        video=box(b'trak',box(b'mdia',mdhd(30,24)+hdlr(b'vide')))
+        sound=box(b'trak',box(b'mdia',mdhd(44100,36864)+hdlr(b'soun')))
+        data=box(b'moov',mvhd(1000,813)+video+sound)
+        d=checks.mp4_track_durations(data)
+        self.assertAlmostEqual(d['video'],0.8)
+        self.assertAlmostEqual(d['audio'],36864/44100)
+        self.assertAlmostEqual(d['container'],0.813)
+    def test_head_pose_sign_conventions(self):
+        for p,y,r in [(10.,0.,0.),(0.,-20.,0.),(0.,0.,15.),(10.,-20.,15.)]:
+            got=face.head_pose_deg(checks.rotation_matrix(p,y,r))
+            np.testing.assert_allclose(got,(p,y,r),atol=1e-9)
+        a=face.head_pose_deg(checks.rotation_matrix(10.,-20.,15.))
+        b=face.head_pose_deg(checks.rotation_matrix(10.,-20.,15.)*3.7)
+        np.testing.assert_allclose(a,b,atol=1e-9)
 
 if __name__=='__main__':unittest.main()

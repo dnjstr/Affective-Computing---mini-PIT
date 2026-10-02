@@ -1,0 +1,15 @@
+{
+  "recordings_union": 25,
+  "eligible_multimodal": 25,
+  "excluded": 0,
+  "audio_predictors_unfiltered": 113,
+  "facial_predictors_unfiltered": 178,
+  "total_predictors_unfiltered": 291,
+  "audio_pitch_missing": 6,
+  "duration_review_flags": 21,
+  "feature_target_tests": 582,
+  "feature_target_q_lt_005": 0,
+  "kruskal_tests": 291,
+  "cross_modal_tests": 64,
+  "fusion_level": "participant-level early fusion; temporal synchronization not established"
+}

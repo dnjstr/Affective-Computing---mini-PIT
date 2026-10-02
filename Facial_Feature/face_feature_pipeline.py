@@ -1,4 +1,5 @@
 import re
+import sys
 import math
 import zipfile
 import urllib.request
@@ -16,12 +17,13 @@ from scipy import stats
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
-warnings.filterwarnings("ignore")
+
 
 # ----------------------------------------------------------------------------
 # CONFIG
 # ----------------------------------------------------------------------------
 BASE = Path(__file__).resolve().parent
+sys.path.insert(0, str(BASE.parent))
 CSV_PATH = BASE / "G4_-_RESEARCH_MINI-PROJECT.csv"
 VIDEO_DIR = BASE / "video"                 
 ZIP_PATH = None                             
@@ -95,6 +97,9 @@ def load_metadata():
         print(f"[1] WARNING: {(~out['consent_obtained']).sum()} rows without consent -> excluded")
         out = out[out["consent_obtained"]]
 
+    if not out["valence_score"].isin(range(1, 6)).all() or not out["arousal_score"].isin(range(1, 6)).all():
+        raise ValueError("Valence/arousal labels must be integers from 1 to 5")
+
     lookup = {p.name.lower(): p for p in BASE.rglob("*")
               if p.suffix.lower() in (".mp4", ".mov") and OUT_DIR not in p.parents}
     print(f"[1] Found {len(lookup)} video files under {BASE}")
@@ -105,7 +110,7 @@ def load_metadata():
     missing = out[out["video_path"].isna()]
     if len(missing):
         print("[1] WARNING: video not found for:", missing["participant_code"].tolist())
-        out = out[out["video_path"].notna()]
+        raise FileNotFoundError("Missing video files: " + ", ".join(missing["participant_code"]))
     print(f"[1] Metadata ready: {len(out)} usable recordings")
     return out.reset_index(drop=True)
 
@@ -245,6 +250,8 @@ def aggregate(frames, n_decoded, fps, w, h, n_reported, brightness, sharpness):
 def process_video(path, landmarker):
     import mediapipe as mp
     cap = cv2.VideoCapture(str(path))
+    if not cap.isOpened():
+        raise ValueError(f"Cannot open video: {path}")
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
     n_reported = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     w, h = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -262,6 +269,8 @@ def process_video(path, landmarker):
         frames.append(frame_signals(res, w, h))
         i += 1
     cap.release()
+    if i == 0:
+        raise ValueError(f"No decoded video frames: {path}")
     return aggregate(frames, i, fps, w, h, n_reported, float(np.mean(bright)) if bright else np.nan,
                      float(np.mean(sharp)) if sharp else np.nan)
 
@@ -288,6 +297,8 @@ def run_extraction(meta, landmarker_factory=None):
             if lm is not None and hasattr(lm, "close"):
                 lm.close()
 
+    pd.DataFrame([{"participant_code": k, "error": v} for k, v in errors.items()],
+                 columns=["participant_code", "error"]).to_csv(OUT_DIR / "extraction_errors.csv", index=False)
     if len(rows) < max(3, int(0.5 * len(meta))):
         raise SystemExit(f"\nOnly {len(rows)}/{len(meta)} videos were processed. First errors:\n"
                          + "\n".join(f"  {k}: {v}" for k, v in list(errors.items())[:5]))
@@ -377,6 +388,8 @@ def eda(df):
                 rho, p = stats.spearmanr(ok[c], ok[t])
                 rows.append({"feature": c, "target": t, "rho": rho, "p_value": p, "n": len(ok)})
     corr = pd.DataFrame(rows, columns=["feature", "target", "rho", "p_value", "n"]).sort_values("p_value")
+    from feature_utils import bh_adjust
+    corr["q_value_bh"] = bh_adjust(corr["p_value"])
     corr.to_csv(OUT_DIR / "feature_target_correlations.csv", index=False)
     print("\n[4] Top 10 Spearman correlations with valence/arousal:")
     print(corr.head(10).to_string(index=False))
@@ -385,13 +398,15 @@ def eda(df):
     rows = []
     for grp in ["valence_group", "arousal_group", "year_level"]:
         for c in kf:
-            groups = [g[c].dropna().values for _, g in df.groupby(grp) if g[c].notna().sum() >= 2]
-            if len(groups) >= 2:
+            groups = [g[c].dropna().values for _, g in df.groupby(grp)]
+            if len(groups) >= 2 and all(len(g) >= 2 for g in groups):
                 try:
                     h, p = stats.kruskal(*groups); rows.append({"grouping": grp, "feature": c, "H": h, "p_value": p})
                 except ValueError:
                     pass
-    pd.DataFrame(rows).sort_values("p_value").to_csv(OUT_DIR / "group_tests_kruskal.csv", index=False)
+    group_tests = pd.DataFrame(rows, columns=["grouping", "feature", "H", "p_value"])
+    group_tests["q_value_bh"] = bh_adjust(group_tests["p_value"])
+    group_tests.sort_values("p_value").to_csv(OUT_DIR / "group_tests_kruskal.csv", index=False)
 
     # correlation heatmap
     plt.figure(figsize=(10, 8))
@@ -423,18 +438,12 @@ def eda(df):
 # STEP 5 - MODEL-READY
 # ----------------------------------------------------------------------------
 def make_model_ready(df, cols):
-    """Facial features only: no spoken word / text / audio columns."""
-    X = df[cols].astype(float)
-    X = X.drop(columns=[c for c in X.columns if c.startswith("face__neutral")], errors="ignore")
-    X = X.loc[:, X.notna().mean() > 0.5]
-    X = X.fillna(X.median())
-    X = X.loc[:, X.std() > 0]                       # drops always-zero blendshapes (e.g. cheekPuff)
-    Z = pd.DataFrame(StandardScaler().fit_transform(X), columns=X.columns, index=df.index)
-    ids = df[["participant_code", "year_level", "valence_score", "arousal_score",
-              "valence_group", "arousal_group", "affect_category", "face_detection_quality_pass"]]
-    pd.concat([ids, X], axis=1).to_csv(OUT_DIR / "face_features_clean_unscaled.csv", index=False)
-    pd.concat([ids, Z], axis=1).to_csv(OUT_DIR / "face_features_model_ready_scaled.csv", index=False)
-    print(f"[5] Model-ready set: {Z.shape[1]} features x {len(Z)} samples saved to {OUT_DIR}/")
+    """Exclude failed-QC samples and preserve missing values for training pipelines."""
+    from feature_utils import facial_columns, export_features
+    good = df["face_detection_quality_pass"].fillna(False).astype(bool)
+    df.loc[~good, ["participant_code", "face_detection_rate"]].to_csv(
+        OUT_DIR / "excluded_samples.csv", index=False)
+    export_features(df.loc[good].copy(), facial_columns(df), OUT_DIR, "face_features")
 
 
 if __name__ == "__main__":

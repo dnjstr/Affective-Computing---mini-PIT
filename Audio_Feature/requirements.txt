@@ -1,8 +1,1 @@
-librosa 
-soundfile 
-pandas 
-numpy 
-scipy 
-scikit-learn 
-matplotlib 
-seaborn
+-r ../requirements.txt

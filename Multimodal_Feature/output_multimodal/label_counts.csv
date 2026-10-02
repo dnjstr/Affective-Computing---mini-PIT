@@ -1,0 +1,22 @@
+variable,value,n
+valence_score,3,14
+valence_score,4,8
+valence_score,5,2
+valence_score,2,1
+arousal_score,4,16
+arousal_score,3,5
+arousal_score,2,2
+arousal_score,5,2
+valence_group,Neutral,14
+valence_group,Positive,10
+valence_group,Negative,1
+arousal_group,High,18
+arousal_group,Moderate,5
+arousal_group,Low,2
+affect_category,Positive-High,10
+affect_category,Neutral-High,7
+affect_category,Neutral-Moderate,5
+affect_category,Neutral-Low,2
+affect_category,Negative-High,1
+year_level,4th Year,18
+year_level,2nd Year,7

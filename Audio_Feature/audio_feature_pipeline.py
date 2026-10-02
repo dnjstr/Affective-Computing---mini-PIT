@@ -1,4 +1,5 @@
 import re
+import sys
 import zipfile
 import warnings
 from pathlib import Path
@@ -13,15 +14,17 @@ from scipy import stats
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
-warnings.filterwarnings("ignore")
+
 
 # ----------------------------------------------------------------------------
 # CONFIG  (edit these paths)
 # ----------------------------------------------------------------------------
-CSV_PATH = Path("G4_-_RESEARCH_MINI-PROJECT.csv")
-AUDIO_DIR = Path("audio")
-ZIP_PATH = Path("drive-download-20261002T065010Z-1-001.zip")  # set None if already unzipped
-OUT_DIR = Path("output")
+BASE = Path(__file__).resolve().parent
+sys.path.insert(0, str(BASE.parent))
+CSV_PATH = BASE / "G4_-_RESEARCH_MINI-PROJECT.csv"
+AUDIO_DIR = BASE / "audio"
+ZIP_PATH = None  # optionally set to an audio ZIP
+OUT_DIR = BASE / "output"
 FIG_DIR = OUT_DIR / "figures"
 
 SR = 16000            # sampling rate used for ALL files
@@ -96,13 +99,16 @@ def load_metadata():
         print(f"[1] WARNING: {n_noconsent} rows without consent -> excluded")
         out = out[out["consent_obtained"]]
 
+    if not out["valence_score"].isin(range(1, 6)).all() or not out["arousal_score"].isin(range(1, 6)).all():
+        raise ValueError("Valence/arousal labels must be integers from 1 to 5")
+
     # Match audio files case-insensitively (.WAV vs .wav)
     lookup = {p.name.lower(): p for p in AUDIO_DIR.rglob("*") if p.suffix.lower() == ".wav"}
     out["audio_path"] = out["audio_filename"].str.lower().map(lookup)
     missing = out[out["audio_path"].isna()]
     if len(missing):
         print("[1] WARNING: audio file not found for:", missing["participant_code"].tolist())
-        out = out[out["audio_path"].notna()]
+        raise FileNotFoundError("Missing audio files: " + ", ".join(missing["participant_code"]))
 
     # does the filename word match the spoken-word column?
     out["metadata_word_matches_filename"] = [
@@ -128,13 +134,21 @@ def extract_features(path):
     f = {}
 
     # ---- load & preprocess ---------------------------------------------------
+    import soundfile as sf
+    original, original_sr = sf.read(path, always_2d=True)
+    if not original.size or not np.isfinite(original).all():
+        raise ValueError("Empty or non-finite audio")
+    f["audio_original_sampling_rate"] = original_sr
+    f["audio_original_channels"] = original.shape[1]
+    f["audio_clipping_ratio"] = float(np.mean(np.abs(original) >= 0.99))
     y_raw, _ = librosa.load(path, sr=SR, mono=True)
     f["audio_duration_sec"] = len(y_raw) / SR
     y, idx = librosa.effects.trim(y_raw, top_db=TRIM_DB)   # remove leading/trailing silence
     f["audio_trimmed_dur_sec"] = len(y) / SR
     f["audio_trimmed_fraction"] = len(y) / max(len(y_raw), 1)
     f["audio_sampling_rate"] = SR
-    f["audio_clipping_ratio"] = float(np.mean(np.abs(y_raw) >= 0.99))   # QC
+    if np.max(np.abs(y_raw)) < 1e-8:
+        raise ValueError("Silent recording")
 
     if len(y) < N_FFT:                       # pad very short clips so STFT works
         y = np.pad(y, (0, N_FFT - len(y)))
@@ -142,7 +156,8 @@ def extract_features(path):
     # ---- PROSODIC: pitch (F0) -----------------------------------------------
     f0, voiced_flag, _ = librosa.pyin(y, fmin=F0_MIN, fmax=F0_MAX, sr=SR,
                                       frame_length=N_FFT, hop_length=HOP)
-    f0v = f0[~np.isnan(f0)]
+    valid = np.isfinite(f0)
+    f0v = f0[valid]
     f["audio_pitch_detected"] = bool(len(f0v) > 0)
     f["audio_voiced_frames"] = int(len(f0v))
     f["audio_pitch_total_frames"] = int(len(f0))
@@ -155,9 +170,11 @@ def extract_features(path):
         f["audio_f0_median_hz"] = float(np.median(f0v))
         f["audio_f0_range_hz"] = float(np.max(f0v) - np.min(f0v))
         # jitter proxy: mean abs relative change of consecutive F0 values
-        f["audio_period_variation_proxy"] = float(np.mean(np.abs(np.diff(f0v)) / f0v[:-1]))
+        adjacent = valid[:-1] & valid[1:]
+        changes = np.abs(np.diff(f0)[adjacent]) / f0[:-1][adjacent]
+        f["audio_period_variation_proxy"] = float(changes.mean()) if len(changes) else np.nan
         # pitch slope (Hz per second) -> rising/falling intonation
-        t = np.arange(len(f0v)) * HOP / SR
+        t = np.flatnonzero(valid) * HOP / SR
         f["audio_f0_slope_hz_per_s"] = float(np.polyfit(t, f0v, 1)[0])
         # semitone variability (speaker-normalised pitch variation)
         st = 12 * np.log2(f0v / np.median(f0v))
@@ -216,18 +233,24 @@ def extract_features(path):
 
 
 def run_extraction(meta):
-    rows = []
+    rows, errors = [], []
     for i, r in meta.iterrows():
         try:
             feats = extract_features(r["audio_path"])
             feats["participant_code"] = r["participant_code"]
+            feats["audio_extraction_ok"] = True
             rows.append(feats)
             print(f"[3] {i+1}/{len(meta)}  {r['participant_code']}  ok")
         except Exception as e:
+            errors.append({"participant_code": r["participant_code"], "error": str(e)})
+            rows.append({"participant_code": r["participant_code"], "audio_extraction_ok": False})
             print(f"[3] {r['participant_code']} FAILED: {e}")
+    pd.DataFrame(errors, columns=["participant_code", "error"]).to_csv(OUT_DIR / "extraction_errors.csv", index=False)
     feat = pd.DataFrame(rows)
     df = meta.drop(columns=["audio_path"]).merge(feat, on="participant_code", how="left")
     df.to_csv(OUT_DIR / "features_raw.csv", index=False)
+    if not df["audio_extraction_ok"].all():
+        raise RuntimeError("Audio extraction failed; inspect extraction_errors.csv. Raw rows are preserved.")
     print(f"[3] Saved {OUT_DIR/'features_raw.csv'}  shape={df.shape}")
     return df
 
@@ -305,6 +328,8 @@ def eda(df):
                 rho, p = stats.spearmanr(ok[c], ok[target])
                 rows.append({"feature": c, "target": target, "rho": rho, "p_value": p, "n": len(ok)})
     corr = pd.DataFrame(rows).sort_values("p_value")
+    from feature_utils import bh_adjust
+    corr["q_value_bh"] = bh_adjust(corr["p_value"])
     corr.to_csv(OUT_DIR / "feature_target_correlations.csv", index=False)
     print("\n[4] Top 10 Spearman correlations with valence/arousal:")
     print(corr.head(10).to_string(index=False))
@@ -313,14 +338,16 @@ def eda(df):
     rows = []
     for grp in ["valence_group", "arousal_group", "year_level"]:
         for c in kf:
-            groups = [g[c].dropna().values for _, g in df.groupby(grp) if g[c].notna().sum() >= 2]
-            if len(groups) >= 2:
+            groups = [g[c].dropna().values for _, g in df.groupby(grp)]
+            if len(groups) >= 2 and all(len(g) >= 2 for g in groups):
                 try:
                     h, p = stats.kruskal(*groups)
                     rows.append({"grouping": grp, "feature": c, "H": h, "p_value": p})
                 except ValueError:
                     pass
-    pd.DataFrame(rows).sort_values("p_value").to_csv(OUT_DIR / "group_tests_kruskal.csv", index=False)
+    group_tests = pd.DataFrame(rows, columns=["grouping", "feature", "H", "p_value"])
+    group_tests["q_value_bh"] = bh_adjust(group_tests["p_value"])
+    group_tests.sort_values("p_value").to_csv(OUT_DIR / "group_tests_kruskal.csv", index=False)
 
     # 4.8 Correlation heatmap of key features --------------------------------------
     plt.figure(figsize=(10, 8))
@@ -358,23 +385,10 @@ def eda(df):
 # STEP 5 — MODEL-READY DATASET
 # ----------------------------------------------------------------------------
 def make_model_ready(df, feat_cols):
-    """Acoustic + prosodic columns only. No spoken word / lexical / text-based columns."""
-    drop = {"audio_pitch_detected", "audio_sampling_rate", "audio_delta_available",
-            "audio_delta_width", "audio_pitch_total_frames", "audio_duration_sec"}
-    cols = [c for c in feat_cols if c not in drop]
-    X = df[cols].astype(float)
-    X = X.loc[:, X.notna().mean() > 0.5]
-    X = X.fillna(X.median())                       # median-impute unvoiced pitch values
-    X = X.loc[:, X.std() > 0]
-
-    # NOTE: for a real train/test split, fit the scaler on the TRAIN set only (avoid leakage).
-    Z = pd.DataFrame(StandardScaler().fit_transform(X), columns=X.columns, index=df.index)
-
-    ids = df[["participant_code", "year_level", "valence_score", "arousal_score",
-              "valence_group", "arousal_group", "affect_category"]]
-    pd.concat([ids, X], axis=1).to_csv(OUT_DIR / "features_clean_unscaled.csv", index=False)
-    pd.concat([ids, Z], axis=1).to_csv(OUT_DIR / "features_model_ready_scaled.csv", index=False)
-    print(f"[5] Model-ready set: {Z.shape[1]} features x {len(Z)} samples saved to {OUT_DIR}/")
+    """Export unimputed features; globally transformed files are explicitly EDA-only."""
+    from feature_utils import audio_columns, export_features
+    cols = audio_columns(df)
+    export_features(df[df["audio_extraction_ok"]].copy(), cols, OUT_DIR, "features")
 
 
 # ----------------------------------------------------------------------------

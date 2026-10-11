@@ -1,0 +1,121 @@
+context,value,target,group,n
+Year Level,2nd Year,valence_group,Negative,0
+Year Level,2nd Year,valence_group,Neutral,2
+Year Level,2nd Year,valence_group,Positive,5
+Year Level,4th Year,valence_group,Negative,1
+Year Level,4th Year,valence_group,Neutral,12
+Year Level,4th Year,valence_group,Positive,5
+Year Level,2nd Year,arousal_group,High,6
+Year Level,2nd Year,arousal_group,Low,1
+Year Level,2nd Year,arousal_group,Moderate,0
+Year Level,4th Year,arousal_group,High,12
+Year Level,4th Year,arousal_group,Low,1
+Year Level,4th Year,arousal_group,Moderate,5
+Class Activity,Examination,valence_group,Negative,1
+Class Activity,Examination,valence_group,Neutral,12
+Class Activity,Examination,valence_group,Positive,5
+Class Activity,Quiz,valence_group,Negative,0
+Class Activity,Quiz,valence_group,Neutral,2
+Class Activity,Quiz,valence_group,Positive,5
+Class Activity,Examination,arousal_group,High,12
+Class Activity,Examination,arousal_group,Low,1
+Class Activity,Examination,arousal_group,Moderate,5
+Class Activity,Quiz,arousal_group,High,6
+Class Activity,Quiz,arousal_group,Low,1
+Class Activity,Quiz,arousal_group,Moderate,0
+Session,Afternoon,valence_group,Negative,1
+Session,Afternoon,valence_group,Neutral,14
+Session,Afternoon,valence_group,Positive,10
+Session,Afternoon,arousal_group,High,18
+Session,Afternoon,arousal_group,Low,2
+Session,Afternoon,arousal_group,Moderate,5
+Spoken Word,Ambot,valence_group,Negative,1
+Spoken Word,Ambot,valence_group,Neutral,0
+Spoken Word,Ambot,valence_group,Positive,2
+Spoken Word,Grabe,valence_group,Negative,0
+Spoken Word,Grabe,valence_group,Neutral,2
+Spoken Word,Grabe,valence_group,Positive,0
+Spoken Word,Kakulba,valence_group,Negative,0
+Spoken Word,Kakulba,valence_group,Neutral,1
+Spoken Word,Kakulba,valence_group,Positive,0
+Spoken Word,Kapoy,valence_group,Negative,0
+Spoken Word,Kapoy,valence_group,Neutral,0
+Spoken Word,Kapoy,valence_group,Positive,1
+Spoken Word,Libog,valence_group,Negative,0
+Spoken Word,Libog,valence_group,Neutral,2
+Spoken Word,Libog,valence_group,Positive,0
+Spoken Word,Lisod,valence_group,Negative,0
+Spoken Word,Lisod,valence_group,Neutral,5
+Spoken Word,Lisod,valence_group,Positive,0
+Spoken Word,Luya,valence_group,Negative,0
+Spoken Word,Luya,valence_group,Neutral,1
+Spoken Word,Luya,valence_group,Positive,0
+Spoken Word,Nadumduman,valence_group,Negative,0
+Spoken Word,Nadumduman,valence_group,Neutral,0
+Spoken Word,Nadumduman,valence_group,Positive,1
+Spoken Word,Nalingaw,valence_group,Negative,0
+Spoken Word,Nalingaw,valence_group,Neutral,1
+Spoken Word,Nalingaw,valence_group,Positive,0
+Spoken Word,Nalipay,valence_group,Negative,0
+Spoken Word,Nalipay,valence_group,Neutral,0
+Spoken Word,Nalipay,valence_group,Positive,1
+Spoken Word,Okay,valence_group,Negative,0
+Spoken Word,Okay,valence_group,Neutral,0
+Spoken Word,Okay,valence_group,Positive,1
+Spoken Word,Proud,valence_group,Negative,0
+Spoken Word,Proud,valence_group,Neutral,0
+Spoken Word,Proud,valence_group,Positive,1
+Spoken Word,Sakto,valence_group,Negative,0
+Spoken Word,Sakto,valence_group,Neutral,1
+Spoken Word,Sakto,valence_group,Positive,0
+Spoken Word,Salimuang,valence_group,Negative,0
+Spoken Word,Salimuang,valence_group,Neutral,0
+Spoken Word,Salimuang,valence_group,Positive,1
+Spoken Word,Sayon,valence_group,Negative,0
+Spoken Word,Sayon,valence_group,Neutral,1
+Spoken Word,Sayon,valence_group,Positive,2
+Spoken Word,Ambot,arousal_group,High,3
+Spoken Word,Ambot,arousal_group,Low,0
+Spoken Word,Ambot,arousal_group,Moderate,0
+Spoken Word,Grabe,arousal_group,High,0
+Spoken Word,Grabe,arousal_group,Low,1
+Spoken Word,Grabe,arousal_group,Moderate,1
+Spoken Word,Kakulba,arousal_group,High,1
+Spoken Word,Kakulba,arousal_group,Low,0
+Spoken Word,Kakulba,arousal_group,Moderate,0
+Spoken Word,Kapoy,arousal_group,High,1
+Spoken Word,Kapoy,arousal_group,Low,0
+Spoken Word,Kapoy,arousal_group,Moderate,0
+Spoken Word,Libog,arousal_group,High,1
+Spoken Word,Libog,arousal_group,Low,0
+Spoken Word,Libog,arousal_group,Moderate,1
+Spoken Word,Lisod,arousal_group,High,3
+Spoken Word,Lisod,arousal_group,Low,0
+Spoken Word,Lisod,arousal_group,Moderate,2
+Spoken Word,Luya,arousal_group,High,0
+Spoken Word,Luya,arousal_group,Low,0
+Spoken Word,Luya,arousal_group,Moderate,1
+Spoken Word,Nadumduman,arousal_group,High,1
+Spoken Word,Nadumduman,arousal_group,Low,0
+Spoken Word,Nadumduman,arousal_group,Moderate,0
+Spoken Word,Nalingaw,arousal_group,High,0
+Spoken Word,Nalingaw,arousal_group,Low,1
+Spoken Word,Nalingaw,arousal_group,Moderate,0
+Spoken Word,Nalipay,arousal_group,High,1
+Spoken Word,Nalipay,arousal_group,Low,0
+Spoken Word,Nalipay,arousal_group,Moderate,0
+Spoken Word,Okay,arousal_group,High,1
+Spoken Word,Okay,arousal_group,Low,0
+Spoken Word,Okay,arousal_group,Moderate,0
+Spoken Word,Proud,arousal_group,High,1
+Spoken Word,Proud,arousal_group,Low,0
+Spoken Word,Proud,arousal_group,Moderate,0
+Spoken Word,Sakto,arousal_group,High,1
+Spoken Word,Sakto,arousal_group,Low,0
+Spoken Word,Sakto,arousal_group,Moderate,0
+Spoken Word,Salimuang,arousal_group,High,1
+Spoken Word,Salimuang,arousal_group,Low,0
+Spoken Word,Salimuang,arousal_group,Moderate,0
+Spoken Word,Sayon,arousal_group,High,3
+Spoken Word,Sayon,arousal_group,Low,0
+Spoken Word,Sayon,arousal_group,Moderate,0
